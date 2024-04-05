@@ -64,6 +64,12 @@ export class AuthService {
       );
   }
 
+  logout() {
+    localStorage.removeItem('token');
+    this._authStatus.set(AuthStatus.notAuthenticated);
+    this._currentUser.set(null);
+  }
+
   private setAuthentication(user: User, token: string): boolean {
     this._currentUser.set(user);
     this._authStatus.set(AuthStatus.authenticated);
