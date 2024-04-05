@@ -20,7 +20,9 @@ export class AuthService {
   public currentUser =  computed(() => this._currentUser());
   public authStatus = computed(() => this._authStatus());
 
-  constructor() { }
+  constructor() {
+    this.checkAuthStatus().subscribe();
+  }
 
   login(email: string, password: string): Observable<boolean> {
 
@@ -29,14 +31,9 @@ export class AuthService {
 
     return this.httpClient.post<LoginResponse>(url, body)
       .pipe(
-        tap(({user, token}) => {
-          this._currentUser.set(user);
-          this._authStatus.set(AuthStatus.authenticated);
-          localStorage.setItem('token', token);
+        map(({user, token}) => {
+          return this.setAuthentication(user, token);
         }),
-        map(
-          () => true
-        ),
         catchError(
           err =>  throwError(() => err.error.message)
         ),
@@ -47,26 +44,32 @@ export class AuthService {
     const url = `${this.baseUrl}/auth/check-token`;
 
     const token = localStorage.getItem('token');
-    if(!token) return of(false);
+    if(!token) {
+      this._authStatus.set(AuthStatus.notAuthenticated);
+      return of(false);
+    }
 
     const headers = new HttpHeaders()
       .set('Authorization', `Bearer ${token}`);
 
     return this.httpClient.get<CheckTokenResponse>(url, {headers})
       .pipe(
-        tap(({user, token}) => {
-          this._currentUser.set(user);
-          this._authStatus.set(AuthStatus.authenticated);
-          localStorage.setItem('token', token);
+        map(({user, token}) => {
+          return this.setAuthentication(user, token);
         }),
-        map(
-          () => true
-        ),
         catchError(() => {
           this._authStatus.set(AuthStatus.notAuthenticated);
           return of(false);
         }),
       );
+  }
+
+  private setAuthentication(user: User, token: string): boolean {
+    this._currentUser.set(user);
+    this._authStatus.set(AuthStatus.authenticated);
+    localStorage.setItem('token', token);
+
+    return true;
   }
 
 }
